@@ -70,10 +70,10 @@ sealed trait AbstractGeneratedSource {
   lazy val matrix: Seq[(Int, Int, Int)] = {
     for {
       pos <- meta("MATRIX").split('|').toIndexedSeq
-      split = pos.split("->")
-      cScalaPos = split(0)
-      d = split(1).split(":")
-      cTwirlPos = d(0)
+      split        = pos.split("->")
+      cScalaPos    = split(0)
+      d            = split(1).split(":")
+      cTwirlPos    = d(0)
       cTokenLength = d.lift(1).fold("0")(l => l)
     } yield
       try {
