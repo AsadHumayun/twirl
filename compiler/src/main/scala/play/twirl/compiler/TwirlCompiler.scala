@@ -67,15 +67,19 @@ sealed trait AbstractGeneratedSource {
     }
   }
 
-  lazy val matrix: Seq[(Int, Int)] = {
+  lazy val matrix: Seq[(Int, Int, Int)] = {
     for {
       pos <- meta("MATRIX").split('|').toIndexedSeq
-      c = pos.split("->")
+      split = pos.split("->")
+      cScalaPos = split(0)
+      d = split(1).split(":")
+      cTwirlPos = d(0)
+      cTokenLength = d.lift(1).fold("0")(l => l)
     } yield
       try {
-        Integer.parseInt(c(0)) -> Integer.parseInt(c(1))
+        (Integer.parseInt(cScalaPos), Integer.parseInt(cTwirlPos), Integer.parseInt(cTokenLength))
       } catch {
-        case _: Exception => (0, 0) // Skip if MATRIX meta is corrupted
+        case _: Exception => (0, 0, 0) // Skip if MATRIX meta is corrupted
       }
   }
 
@@ -835,7 +839,7 @@ object Source {
       hash: String
   ): String = {
     val scalaCode = new StringBuilder
-    val positions = ListBuffer.empty[(Int, Int)]
+    val positions = ListBuffer.empty[(Int, Int, Int)]
     val lines     = ListBuffer.empty[(Int, Int)]
     serialize(generatedTokens, scalaCode, positions, lines)
     scalaCode.toString + s"""
@@ -843,7 +847,7 @@ object Source {
                   -- GENERATED --
                   SOURCE: ${relativePath.replace(File.separator, "/")}
                   HASH: $hash
-                  MATRIX: ${positions.map(pos => s"${pos._1}->${pos._2}").mkString("|")}
+                  MATRIX: ${positions.map(pos => s"${pos._1}->${pos._2}:${pos._3}").mkString("|")}
                   LINES: ${lines.map(line => s"${line._1}->${line._2}").mkString("|")}
                   -- GENERATED --
               */
@@ -853,7 +857,7 @@ object Source {
   private def serialize(
       parts: collection.Seq[Any],
       source: StringBuilder,
-      positions: ListBuffer[(Int, Int)],
+      positions: ListBuffer[(Int, Int, Int)],
       lines: ListBuffer[(Int, Int)]
   ): Unit = {
     parts.foreach {
@@ -861,7 +865,7 @@ object Source {
       case s: String                                     => source.append(s)
       case Source(code, pos @ OffsetPosition(_, offset)) => {
         source.append("/*" + pos + "*/")
-        positions += (source.length                -> offset)
+        positions += ((source.length, offset, code.length))
         lines += (source.toString.split('\n').size -> pos.line)
         source.append(code)
       }
